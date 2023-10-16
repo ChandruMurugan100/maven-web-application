@@ -1,10 +1,27 @@
 node {
     echo "The job name is ${env.JOB_NAME}"
+
     def mavenHome = tool name: 'maven3.9.5'
-    stage('CheckOutCode') { 
+
+    stage('CheckOutCode') {
         git 'https://github.com/ChandruMurugan100/maven-web-application.git'
     }
+
     stage('Build') {
         sh "${mavenHome}/bin/mvn clean package"
+    }
+
+    stage('ExecuteSonarQube') {
+        sh "${mavenHome}/bin/mvn clean sonar:sonar"
+    }
+
+    stage('UploadArtifactInNexus') {
+        sh "${mavenHome}/bin/mvn clean deploy"
+    }
+
+    stage('DeployToTomcat') {
+        sshagent(['from snippet generator']) {
+            sh "scp -o StrictHostKeyChecking=no target/maven-web.war ec2-user@172.34.62:/opt/apache-tomcat-9.0.6/webapps/"
+        }
     }
 }
